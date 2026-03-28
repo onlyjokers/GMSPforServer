@@ -140,16 +140,52 @@ GMSPforServer/
 
 ### 训练端（GMSP）
 
-```python
-from gmsp.clients.websocket_client import GMSPWebSocketClient
+**方式一：通过工厂函数自动选择（推荐）**
 
-client = GMSPWebSocketClient("ws://阿里云IP:8080")
-await client.connect()
+在 `configs/local.json` 中配置 `relay_server`：
+
+```json
+{
+  "profiles": {
+    "blenderllm_qwen3_5_4b": {
+      "transport": {
+        "relay_server": "ws://阿里云IP:8080"
+      }
+    }
+  }
+}
+```
+
+代码中使用：
+
+```python
+from gmsp.clients import create_transport_client
+from gmsp.config import load_gmsp_config, get_default_profile_name, get_profile
+
+config = load_gmsp_config()
+profile = get_profile(config, get_default_profile_name(config))
+client = create_transport_client(profile["transport"])
+client.connect()
+results = client.send_materials(materials_json)
+client.close()
+```
+
+**方式二：直接使用 WebSocket 客户端**
+
+```python
+from gmsp.clients.websocket_client import WebSocketClientSender
+
+client = WebSocketClientSender(relay_server="ws://阿里云IP:8080")
+client.connect()
+results = client.send_materials(materials_json)
+client.close()
 ```
 
 ### Blender 端
 
-在 Blender 插件中填入：`ws://阿里云IP:8080`
+1. 在 Blender 插件 GMSP 面板中，将通信模式切换为 "WebSocket"
+2. 填入中转服务器地址：`ws://阿里云IP:8080`
+3. 点击 "启动服务"
 
 ## 故障排查
 
