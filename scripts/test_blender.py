@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""模拟 Blender 客户端"""
+"""模拟 Blender 客户端 — 返回与真实插件一致的字段映射格式"""
 import asyncio
 import json
 import sys
@@ -23,20 +23,23 @@ async def test_blender(server_url: str):
             request = json.loads(message)
             print(f"[Blender] ✅ 收到请求: {request.get('session_id')}")
 
-            # 返回模拟结果
+            # 从请求中提取材质名称，构造与真实插件一致的字段映射格式
+            material_group = request.get("material_group", request.get("outputs", []))
+            names = [m.get("name", f"M{i+1}") for i, m in enumerate(material_group)]
+
+            # 字段映射格式：每个字段是 {材质名: 值} 的 dict
             response = {
-                "material_results": [{
-                    "id": 1,
-                    "name": "test",
-                    "status": True,
-                    "accuracy_rank": 5,
-                    "meaning_rank": 4
-                }],
                 "session_id": request.get("session_id"),
-                "taskid": request.get("head", {}).get("taskid")
+                "taskid": request.get("head", {}).get("taskid"),
+                "accuracy_rank": {name: rank for rank, name in enumerate(names, 1)},
+                "meaning_rank": {name: rank for rank, name in enumerate(names, 1)},
+                "status": {name: True for name in names},
+                "error_msg": {name: "" for name in names},
+                "id": {name: i + 1 for i, name in enumerate(names)},
+                "name": {name: name for name in names},
             }
             await ws.send(json.dumps(response))
-            print("[Blender] ✅ 已发送响应")
+            print(f"[Blender] ✅ 已发送响应 ({len(names)} 个材质)")
 
         except asyncio.TimeoutError:
             print("[Blender] ⚠️  超时（可能没有训练端发送请求）")
